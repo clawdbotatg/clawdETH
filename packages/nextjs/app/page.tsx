@@ -1,84 +1,104 @@
-
 "use client";
 
-import { useAccount } from "wagmi";
-import { Address } from "@scaffold-ui/components";
-import type { NextPage } from "next";
-import { hardhat } from "viem/chains";
 import Link from "next/link";
-import { BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { useTargetNetwork } from "~~/hooks/scaffold-eth";
-
+import type { NextPage } from "next";
 
 const Home: NextPage = () => {
-  const { address: connectedAddress } = useAccount();
-  const { targetNetwork } = useTargetNetwork();
-
   return (
-    <>
-      <div className="flex items-center flex-col grow pt-10">
-        <div className="px-5">
-          <h1 className="text-center">
-            <span className="block text-2xl mb-2">Welcome to</span>
-            <span className="block text-4xl font-bold">Scaffold-ETH 2</span>
-            
-          </h1>
-          <div className="flex justify-center items-center space-x-2 flex-col">
-            <p className="my-2 font-medium">Connected Address:</p>
-            <Address
-              address={connectedAddress}
-              chain={targetNetwork}
-              blockExplorerAddressLink={
-                targetNetwork.id === hardhat.id ? `/blockexplorer/address/${connectedAddress}` : undefined
-              }
-            />
+    <div className="flex items-center flex-col grow pt-10">
+      <div className="px-5 max-w-3xl">
+        <h1 className="text-center">
+          <span className="block text-4xl font-bold mb-2">🐾 clawdETH</span>
+          <span className="block text-lg text-base-content/70">ETH yield that buys &amp; burns CLAWD</span>
+        </h1>
+
+        <div className="mt-10 space-y-8">
+          {/* How it works */}
+          <div className="card bg-base-200 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title text-2xl">How it works</h2>
+              <div className="space-y-4 text-base-content/80">
+                <div className="flex items-start gap-3">
+                  <span className="badge badge-primary badge-lg mt-0.5">1</span>
+                  <div>
+                    <p className="font-semibold">Deposit ETH or weETH</p>
+                    <p className="text-sm">
+                      Your ETH is swapped to ether.fi&apos;s weETH — a liquid staking token that earns ETH yield
+                      automatically.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="badge badge-primary badge-lg mt-0.5">2</span>
+                  <div>
+                    <p className="font-semibold">Receive clawdETH</p>
+                    <p className="text-sm">
+                      You get clawdETH tokens 1:1 with your weETH deposit. These represent your share of the vault.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="badge badge-primary badge-lg mt-0.5">3</span>
+                  <div>
+                    <p className="font-semibold">Yield → CLAWD buyback</p>
+                    <p className="text-sm">
+                      As weETH appreciates, anyone can call <code className="bg-base-300 px-1 rounded">harvest()</code>.
+                      The yield is swapped for CLAWD tokens via Uniswap V3.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="badge badge-primary badge-lg mt-0.5">4</span>
+                  <div>
+                    <p className="font-semibold">50% Burn / 50% Distribute</p>
+                    <p className="text-sm">
+                      Half the CLAWD is burned forever, reducing supply. The other half is distributed pro-rata to
+                      clawdETH holders.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          
-<p className="text-center text-lg">
-  Get started by editing{" "}
-  <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-    packages/nextjs/app/page.tsx
-  </code>
-</p>
-<p className="text-center text-lg">
-  Edit your smart contract{" "}
-  <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-    YourContract.sol
-  </code>{" "}
-  in{" "}
-  <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-    packages/hardhat/contracts
-  </code>
-</p>
 
-        </div>
+          {/* Architecture */}
+          <div className="card bg-base-200 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title text-2xl">Architecture</h2>
+              <div className="text-base-content/80 space-y-2">
+                <p>
+                  <strong>Chain:</strong> Base (L2)
+                </p>
+                <p>
+                  <strong>Yield source:</strong> ether.fi weETH —{" "}
+                  <span className="text-xs font-mono">0x04C0...150A</span>
+                </p>
+                <p>
+                  <strong>CLAWD token:</strong> <span className="text-xs font-mono">0x9f86...b07</span>
+                </p>
+                <p>
+                  <strong>DEX:</strong> Uniswap V3 on Base
+                </p>
+                <p className="text-sm mt-4 text-warning">
+                  ⚠️ Why weETH and not stETH? Lido is not deployed on Base. ether.fi&apos;s weETH is the premier ETH LST
+                  on Base with deep liquidity.
+                </p>
+              </div>
+            </div>
+          </div>
 
-        <div className="grow bg-base-300 w-full mt-16 px-8 py-12">
-          <div className="flex justify-center items-center gap-12 flex-col md:flex-row">
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <BugAntIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Tinker with your smart contract using the{" "}
-                <Link href="/debug" passHref className="link">
-                  Debug Contracts
-                </Link>{" "}
-                tab.
-              </p>
-            </div>
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <MagnifyingGlassIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Explore your local transactions with the{" "}
-                <Link href="/blockexplorer" passHref className="link">
-                  Block Explorer
-                </Link>{" "}
-                tab.
-              </p>
-            </div>
+          {/* CTA */}
+          <div className="flex justify-center gap-4 pb-10">
+            <Link href="/dashboard" className="btn btn-primary btn-lg">
+              Launch App →
+            </Link>
+            <Link href="/stats" className="btn btn-outline btn-lg">
+              View Stats
+            </Link>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
