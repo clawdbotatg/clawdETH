@@ -1,83 +1,132 @@
-# 🏗 Scaffold-ETH 2
+# 🐾 clawdETH
 
-<h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
-</h4>
+**ETH yield that buys & burns CLAWD**
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
+clawdETH is an ETH yield vault on Base that uses ether.fi's weETH as a yield source. Deposited ETH earns staking yield, which is periodically harvested and used to buy CLAWD tokens via Uniswap V3. 50% of purchased CLAWD is burned forever, 50% is distributed to clawdETH holders.
 
-> [!NOTE]
-> 🤖 Scaffold-ETH 2 is AI-ready! It has everything agents need to build on Ethereum. Check `.agents/`, `.claude/`, `.opencode` or `.cursor/` for more info.
+## Architecture
 
-⚙️ Built using NextJS, RainbowKit, Foundry, Wagmi, Viem, and Typescript.
+| Component | Details |
+|-----------|---------|
+| **Chain** | Base (8453) |
+| **Yield Source** | ether.fi weETH (`0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A`) |
+| **CLAWD Token** | `0x9f86dB9fc6f7c9408e8Fda3Ff8ce4e78ac7a6b07` |
+| **DEX** | Uniswap V3 SwapRouter (`0x2626664c2603336E57B271c5C0b26F421741e481`) |
+| **Contract** | ClawdETH.sol — single contract |
 
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
+### Why weETH, not stETH?
 
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
+**Lido is not deployed on Base.** ether.fi's weETH is the premier ETH liquid staking token on Base with deep Uniswap V3 liquidity. weETH is non-rebasing — it appreciates in ETH value over time.
 
-## Requirements
+## How It Works
 
-Before you begin, you need to install the following tools:
+1. **Deposit** ETH or weETH → receive clawdETH tokens 1:1 with weETH deposited
+2. **weETH appreciates** in value over time (ETH staking yield)
+3. **Anyone calls `harvest()`** → surplus weETH is swapped for CLAWD via Uniswap V3
+   - 50% of CLAWD → burned (sent to `0xdead`)
+   - 49% of CLAWD → distributed pro-rata to clawdETH holders
+   - 1% of CLAWD → harvest caller (gas incentive)
+4. **Claim** accumulated CLAWD rewards anytime
+5. **Withdraw** your weETH (or swap back to ETH) anytime
 
-- [Node (>= v20.18.3)](https://nodejs.org/en/download/)
-- Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
-- [Git](https://git-scm.com/downloads)
+## Quick Start
 
-## Quickstart
+### Prerequisites
 
-To get started with Scaffold-ETH 2, follow the steps below:
+- [Node.js](https://nodejs.org/) (v18+)
+- [Yarn](https://yarnpkg.com/) (v3+)
+- [Foundry](https://book.getfoundry.sh/getting-started/installation)
 
-1. Install dependencies if it was skipped in CLI:
+### Install
 
-```
-cd my-dapp-example
+```bash
+git clone https://github.com/clawdbotatg/clawdETH.git
+cd clawdETH
 yarn install
 ```
 
-2. Run a local network in the first terminal:
+### Run Locally
 
-```
+```bash
+# Terminal 1: Start local chain (Base fork)
 yarn chain
-```
 
-This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/foundry/foundry.toml`.
-
-3. On a second terminal, deploy the test contract:
-
-```
+# Terminal 2: Deploy contracts
 yarn deploy
-```
 
-This command deploys a test smart contract to the local network. The contract is located in `packages/foundry/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/foundry/script` to deploy the contract to the network. You can also customize the deploy script.
-
-4. On a third terminal, start your NextJS app:
-
-```
+# Terminal 3: Start frontend
 yarn start
 ```
 
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
+### Run Tests
 
-Run smart contract test with `yarn foundry:test`
+```bash
+cd packages/foundry
+forge test -vvv
+```
 
-- Edit your smart contracts in `packages/foundry/contracts`
-- Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/foundry/script`
+37 tests covering deposits, withdrawals, harvest, rewards, and edge cases.
 
+### Deploy to Base Mainnet
 
-## Documentation
+```bash
+cd packages/foundry
 
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
+# Create .env with your deployer private key
+echo "DEPLOYER_PRIVATE_KEY=0x..." > .env
 
-To know more about its features, check out our [website](https://scaffoldeth.io).
+# Deploy
+forge script script/DeployClawdETH.s.sol \
+  --rpc-url https://base-mainnet.g.alchemy.com/v2/YOUR_KEY \
+  --broadcast \
+  --verify
+```
 
-## Contributing to Scaffold-ETH 2
+### Deploy Frontend to Vercel
 
-We welcome contributions to Scaffold-ETH 2!
+```bash
+cd packages/nextjs
 
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
+# Build
+npx next build
+
+# Deploy (requires Vercel CLI)
+vercel --prod
+```
+
+Environment variables for Vercel:
+- `NEXT_PUBLIC_ALCHEMY_API_KEY` — your Alchemy API key
+- `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` — WalletConnect project ID
+
+## Contract Interface
+
+| Function | Description |
+|----------|-------------|
+| `depositETH()` payable | Swap ETH→weETH via Uniswap, mint clawdETH |
+| `depositWeETH(amount)` | Deposit weETH directly, mint clawdETH 1:1 |
+| `withdraw(amount)` | Burn clawdETH, receive weETH |
+| `withdrawETH(amount)` | Burn clawdETH, receive ETH (swaps via Uniswap) |
+| `harvest()` | Capture yield, buy+burn CLAWD, distribute rewards |
+| `claim()` | Claim accumulated CLAWD rewards |
+| `getRewards(address)` | View pending CLAWD rewards |
+| `harvestableYield()` | View harvestable weETH surplus |
+
+## Project Structure
+
+```
+clawdETH/
+├── packages/
+│   ├── foundry/
+│   │   ├── contracts/ClawdETH.sol      # Main vault contract
+│   │   ├── script/DeployClawdETH.s.sol # Deploy script
+│   │   └── test/ClawdETH.t.sol         # 37 tests
+│   └── nextjs/
+│       ├── app/page.tsx                # Landing page
+│       ├── app/dashboard/page.tsx      # Deposit/withdraw/claim
+│       └── app/stats/page.tsx          # TVL, burns, APY
+└── SPEC.md                            # Full specification
+```
+
+## License
+
+MIT
