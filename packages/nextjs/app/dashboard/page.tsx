@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { Address } from "@scaffold-ui/components";
 import type { NextPage } from "next";
 import { formatEther, parseEther } from "viem";
 import { useAccount, useBalance } from "wagmi";
-import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 type ButtonState = "idle" | "loading" | "mining" | "done";
 
 const Dashboard: NextPage = () => {
   const { address: connectedAddress } = useAccount();
   const { data: ethBalance } = useBalance({ address: connectedAddress });
+  const { data: deployedContractData } = useDeployedContractInfo("ClawdETH");
 
   // ─── Form state ──────────────────────────────────────────
   const [depositAmount, setDepositAmount] = useState("");
@@ -166,9 +169,9 @@ const Dashboard: NextPage = () => {
   if (!connectedAddress) {
     return (
       <div className="flex items-center justify-center grow">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Connect your wallet</h2>
-          <p className="text-base-content/60">Connect a wallet to deposit ETH or weETH into the clawdETH vault.</p>
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-bold">🐾 clawdETH Dashboard</h2>
+          <RainbowKitCustomConnectButton />
         </div>
       </div>
     );
@@ -355,6 +358,12 @@ const Dashboard: NextPage = () => {
         <div className="card bg-base-200 shadow-xl col-span-1 md:col-span-2 mb-10">
           <div className="card-body">
             <h2 className="card-title">Vault Info</h2>
+            {deployedContractData && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm text-base-content/60">Contract:</span>
+                <Address address={deployedContractData.address} />
+              </div>
+            )}
             <div className="stats stats-vertical md:stats-horizontal w-full">
               <div className="stat">
                 <div className="stat-title">Total clawdETH Supply</div>
