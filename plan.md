@@ -26,6 +26,10 @@
 >
 > The right approach is to launch the simplest version first, test adoption, and expand only if usage proves there is real demand.
 
+### Community Synthesis
+
+> ETH liquid staking via Lido — yield buys $CLAWD → burns + distributes rewards. Community split: half say ship now as low-risk revenue; half say solve the wrong problem before agent infrastructure ships. **Practical path: ship MVP only if parallel execution on agent infra won't slip.**
+
 ---
 
 ## 🎯 What Is This?
@@ -34,109 +38,110 @@ A **liquid staking wrapper** that:
 1. Accepts ETH or stETH deposits
 2. Issues **clawdETH** (ERC20) representing the staked position
 3. Uses **Lido** as the backend staking provider (no new validator infrastructure)
-4. Routes yield to a **CLAWD buyback** mechanism — some bought and burned, some distributed to clawdETH holders
+4. Routes yield to a **CLAWD buyback** — some burned, some distributed to clawdETH holders
 
-Think: stETH but with a CLAWD deflationary engine attached. Conservative DeFi users get ETH yield + CLAWD exposure without directly holding the token.
+Conservative DeFi users get ETH yield + CLAWD exposure without directly holding the token.
 
 ---
 
-## 🏗️ Architecture
+## ⚠️ Critical Architecture Flag
+
+> **Lido on Base:** As of 2026-03, Lido's canonical liquid staking is on Ethereum mainnet — **not natively deployed on Base**. Before proceeding, must verify:
+> - Option A: Use Lido on mainnet + bridge stETH to Base (complex, multi-chain)
+> - Option B: Use Base-native LSD protocol (e.g., Aerodrome FMV, Tetu, PancakeSwap on Base)
+> - Option C: Deploy on Ethereum mainnet instead of Base
+>
+> **Recommendation:** Confirm Base LSD availability first. This significantly changes the architecture.
+
+---
+
+## 🏗️ Architecture (Base Case — Assuming Base LSD Available)
 
 ### Stack
-- **Liquid Staking Backend:** Lido (stETH/wstETH — no new validator infrastructure)
+- **LSD Backend:** Lido or equivalent on Base (stETH or equivalent)
 - **Smart Contract:** Solidity on Base — clawdETH ERC20 + yield harvester + CLAWD buyer
-- **DEX Integration:** Uniswap V3 / BaseSwap for CLAWD buying (on-chain swap)
+- **DEX:** Uniswap V3 or BaseSwap for CLAWD purchasing
+- **Keeper:** Gelato Network or Vercel cron for harvest automation
 - **Frontend:** `/clawdeth` page on ClawdViction
-- **Yield Automation:** Vercel cron or Gelato Network ( keepers)
 
 ### Core Contract: `clawdETH.sol`
 
 ```
-deposit(ETH)        → receive clawdETH 1:1 with stETH rate
+deposit(ETH)        → receive clawdETH at 1:1 with stETH rate
 deposit(stETH)      → wrap to clawdETH via Lido
 withdraw(clawdETH)  → burn clawdETH, receive ETH via Lido + accrued rewards
 
-// Yield harvester (called by keeper every 24h)
-harvest() {
-  → claim stETH yield from Lido
+harvest() [keeper, every 24h]:
+  → claim yield (stETH rebasing — no explicit claim needed)
   → swap 50% of yield for CLAWD via Uniswap Base
   → send CLAWD to dead wallet (burn)
   → distribute remaining 50% yield pro-rata to clawdETH holders
   → increment accumulatedRewardsPerToken
-}
 ```
-
-**Note:** Lido doesn't have an explicit "claim" — yield accrues in the stETH token itself (rebasing). For wstETH (wrapped stETH), you wrap stETH and yield accrues on the wstETH balance.
 
 ---
 
 ## 📋 Build Steps
 
-### Phase 1 — Contract MVP
+### Phase 1 — Contract MVP (Critical: verify LSD availability first)
 - Deploy `clawdETH.sol` to Base testnet
-- Implement: deposit ETH, deposit stETH, withdraw, ERC20 functions
-- Integrate with Lido's stETH/wstETH on Base (check: is Lido on Base? If not, may need Ethereum mainnet Lido and bridge)
-- **Critical check:** Does Lido operate on Base? If no — this MVP needs to be on Ethereum mainnet, not Base. Need to confirm.
-
-> ⚠️ **Lido on Base:** As of 2026-03, Lido's canonical liquid staking is on Ethereum mainnet. There is NO native Lido on Base. Options:
-> 1. Bridge ETH to mainnet → stake with Lido → bridge stETH back to Base → wrap to clawdETH (complex)
-> 2. Use Tetu or another Base-native liquid staking provider instead (simpler)
-> 3. Deploy on Ethereum mainnet instead of Base
->
-> **Recommendation:** Explore Base-native LSD (Liquid Staking Derivatives) protocols first — this changes the architecture meaningfully. Check for Aerodrome FMV as the staking backend.
+- Implement: deposit ETH, deposit stETH, withdraw, ERC20
+- **If Lido is NOT on Base:** pivot to Aerodrome FMV or Tetu as staking backend
+- Test: deposit ETH → receive clawdETH → withdraw ETH
 
 ### Phase 2 — CLAWD Buyback
 - Implement `harvest()` function
-- Add Uniswap V3 / BaseSwap integration for CLAWD purchasing
-- Set burn rate (e.g., 50% burn / 50% distribution)
-- Set up keeper (Gelato or cron job calling `harvest()`)
+- Uniswap V3 / BaseSwap integration for CLAWD purchasing
+- Set burn rate: 50% burn / 50% distribution (configurable by governance)
+- Set up Gelato keeper or Vercel cron for `harvest()` calls
+- **TWAP or small batch buys** — prevent slippage on illiquid CLAWD
 
-### Phase 3 — Frontend + Token
+### Phase 3 — Frontend
 - Deploy clawdETH ERC20 with metadata (name, symbol, decimals, logo)
-- Add `/clawdeth` page to ClawdViction: deposit/withdraw UI
-- Add wallet balance display (clawdETH balance in connected wallet)
-- Show estimated APY, CLAWD burned to date
+- `/clawdeth` page: deposit/withdraw UI
+- Wallet balance display (clawdETH in connected wallet)
+- Show: estimated APY, CLAWD burned to date, yield accrued
 
 ### Phase 4 — Rewards Distribution
-- Implement `claim()` function for clawdETH holders
+- Implement `claim()` for clawdETH holders
 - Accumulated rewards tracked per-token (ERC20 rewards standard)
 - Frontend: "Claim CLAWD rewards" button
 
 ### Phase 5 — Pendle Integration (Optional)
-- Structure clawdETH as a Pendle SY (standard yield token)
-- Allows PT (principal token) + YT (yield token) splits on Pendle
+- Structure clawdETH as Pendle SY (standard yield token)
+- Enables PT (principal token) + YT (yield token) splits
 - Opens up trading of future yield
 
 ---
 
 ## 💰 Revenue Model
 
-- No direct protocol revenue — clawdETH is a utility/liquidity product
+- No direct protocol revenue — clawdETH is a utility/TVL product
 - CLAWD value accrues from:
   - Burned CLAWD (yield × burn rate) — immediate supply reduction
-  - clawdETH adoption driving TVL into the CLAWD ecosystem
-- Treasury benefit: TVL growth without direct revenue
+  - TVL growth bringing new capital into CLAWD ecosystem
+- Treasury benefit: TVL growth without direct revenue extraction
 
 ---
 
 ## 🔗 Dependencies
 
-- Lido (or Base LSD alternative) — **must verify Base availability first**
+- **Lido or Base LSD provider** — MUST verify before proceeding
 - Uniswap V3 or BaseSwap on Base for CLAWD buying
 - Gelato Network or Vercel cron for harvest automation
 - Existing CLAWD token contract on Base (`0x9f86dB9fc6f7c9408e8Fda3Ff8ce4e78ac7a6b07`)
-- Gas-efficient DEX routing
+- Audit before mainnet deployment
 
 ---
 
 ## 🚫 Risks
 
-- **Lido not on Base:** Changes everything — need to pivot to another LSD or go mainnet. Must confirm before scoping further.
-- **stETH depeg risk:** Lido stETH has never depegged significantly, but it is a risk. No vault-level insurance.
-- **Impermanent loss for stETH:** Not applicable — stETH is 1:1 with ETH.
-- **CLAWD buyback slippage:** If CLAWD is illiquid, buying large amounts via Uniswap moves the price significantly. Use TWAP or small batch buys.
-- **Audit cost:** This is a real financial contract. Must audit before mainnet launch.
-- **Regulatory:** stETH staking may have securities implications in some jurisdictions — T&Cs needed.
+- **Lido not on Base:** Changes entire architecture. Confirm before scoping further.
+- **stETH depeg:** Lido stETH has never significantly depegged, but is a risk.
+- **CLAWD buyback slippage:** If CLAWD illiquid, large buys move price. Use TWAP.
+- **Audit cost:** Real financial contract. Audit before mainnet.
+- **Regulatory:** stETH staking may have securities implications. T&Cs needed.
+- **TVL timing:** Community split is valid — don't ship simultaneously with Agent Launcher if dev bandwidth is tight.
 
 ---
 
@@ -144,6 +149,6 @@ harvest() {
 
 - First deposit within 30 days of mainnet launch
 - $500k+ TVL in clawdETH within 90 days
-- CLAWD burned via clawdETH yield > 10,000 CLAWD in first quarter
+- 10,000+ CLAWD burned via clawdETH yield in first quarter
 - Zero contract exploits
 - Pendle integration shipped if liquidity warrants it
